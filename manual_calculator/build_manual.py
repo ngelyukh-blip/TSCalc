@@ -10,7 +10,7 @@ from openpyxl.workbook.properties import CalcProperties
 from openpyxl.workbook.defined_name import DefinedName
 
 ROOT=Path(__file__).resolve().parents[1]
-OUT=ROOT/'TSCalc_Manual_v0.2.xlsx'
+OUT=ROOT/'TSCalc_Manual_v0.2.1.xlsx'
 LEND=2001; PEND=1001; OEND=1001; MEND=301; NEND=101
 wb=openpyxl.Workbook(); wb.remove(wb.active)
 names=['Инструкция','Итог','Лаги','Щиты','Прочие','Материалы','Узлы','Расчёт','Спецификация','Проверки']
@@ -300,6 +300,29 @@ for rr,sheet,last,lastletter in [(7,'Лаги',LEND,'I'),(8,'Щиты',PEND,'E')
 for rr in range(3,11):
  wb['Итог'].cell(rr,2).fill=PatternFill('solid',fgColor='F2F2F2');wb['Итог'].cell(rr,2).font=Font(name='Calibri',size=11,color='222222')
 # Sanity-check formula syntax balance before export (not a substitute for native recalculation).
+## 0.2.1: support of a timber upper layer is independent of the floor-zone base.
+for r in range(2,LEND+1):
+ f=lags.cell(r,21).value
+ old_zone=f'IFERROR(VLOOKUP(H{r},Зоны!$A$2:$G$201,2,FALSE),"")<>E{r}'
+ f=f.replace(old_zone,f'AND(E{r}<>"Дерево",{old_zone})')
+ vib_rule=f'IF(F{r}="ВИБ-01",IFERROR(VLOOKUP(H{r},Зоны!$A$2:$G$201,4,FALSE),"")<>"Да",IFERROR(VLOOKUP(H{r},Зоны!$A$2:$G$201,4,FALSE),"")="Да")'
+ f=f.replace(vib_rule,f'AND(E{r}<>"Дерево",{vib_rule})')
+ lags.cell(r,21,f)
+lags['E1']='Опирание лаги';zs['B1']='Основание зоны'
+# A blank zone on a panel or linear record denotes the whole object, never a zero-area zone.
+for r in range(2,PEND+1):
+ panels.cell(r,11,panels.cell(r,11).value.replace(f'COUNTIF(Зоны!$A$2:$A$201,D{r})<>1',f'AND(D{r}<>"",COUNTIF(Зоны!$A$2:$A$201,D{r})<>1)'))
+ gr=LEND+r-1;gs.cell(gr,3,f'=IF(Щиты!K{r}="ОК",IF(Щиты!D{r}="","Объект",Щиты!D{r}),"")')
+for r in range(2,1002):
+ ls.cell(r,7,ls.cell(r,7).value.replace(f'COUNTIF(Зоны!$A$2:$A$201,E{r})<>1',f'AND(E{r}<>"",COUNTIF(Зоны!$A$2:$A$201,E{r})<>1)'))
+panels['D1']='Зона ID (пусто = объект)';ls['E1']='Зона ID (пусто = объект)'
+ins['B4']='3. Лаги\nОдна строка означает одинаковые физические куски. Введите материал, длину одного куска в мм, количество, непосредственное опирание, узел и зону. Бетонный/металлический нижний узел должен соответствовать основанию зоны. Деревянный верхний ярус ДЕР-01 допустим над бетонной или металлической зоной: её площадь учитывается только один раз. Число пересечений верхнего яруса задаётся вручную; оно не выводится из площади зоны.'
+ins['B6']='5. Щиты\nВыберите ID из базы, введите целое количество. Зону укажите, если разбивка известна. Пустая зона означает количество по объекту, а не дополнительную площадную зону. В базе три типоразмера и две породы. Вводятся полные изделия; фактический раскрой проверяется отдельно.'
+ins['B7']='6. Рейка и плинтус\nВведите вид, длину одного отрезка в мм и количество. Зона необязательна: пустое поле означает сводную длину по объекту. Две стороны дубовой рейки не удваиваются повторно. Плинтус и акустический периметр зон — разные исходные величины.'
+for sheet in wb:
+ for row in sheet:
+  for cell in row:
+   if isinstance(cell.value,str) and cell.data_type!='f':cell.value=cell.value.replace('Manual 0.2','Manual 0.2.1')
 lags['X1']='Высота для бетонного узла';lags['Y1']='Высота для металлического узла'
 for r in range(2,LEND+1):
  lags.cell(r,24,f'=IF(AND(U{r}="ОК",E{r}="Бетон",F{r}<>"ВИБ-01"),K{r},0)');lags.cell(r,25,f'=IF(AND(U{r}="ОК",E{r}="Металл",F{r}<>"ВИБ-01"),K{r},0)')
