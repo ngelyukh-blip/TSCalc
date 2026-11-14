@@ -1,0 +1,14 @@
+analysis/
+audit_sources.py
+docs/PLUGIN_STATUS.md
+.transfer-current/
+dist/
+__pycache__/
+*.pyc
+*.dwg
+*.bak
+*.xlsx
+*.zip
+.env*
+!.env.example
+
